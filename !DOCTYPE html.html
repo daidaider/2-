@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>公館鄉數位導覽系統</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        jujube: {
+                            50: '#FDF4F2',
+                            100: '#FBE8E5',
+                            500: '#A63A2B', // 紅棗紅
+                            600: '#8E2F22',
+                            700: '#732318',
+                        },
+                        olive: {
+                            50: '#F5F7F5',
+                            100: '#EBEFEA',
+                            600: '#3B583F', // 橄欖綠
+                            700: '#2E4431',
+                        },
+                        warm: {
+                            50: '#FAF6F0',  // 溫潤暖沙色
+                            100: '#F3ECE2',
+                            200: '#EBE5DB',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts & FontAwesome -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #FAF6F0;
+        }
+        /* 美化滾動條 */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #FAF6F0;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #EBE5DB;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #A63A2B;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col selection:bg-jujube-100 selection:text-jujube-700">
+
+    <!-- 1. 第一層：進站警告彈窗與導流設定 (Typhoon Interstitial Modal) -->
+    <div id="typhoon-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md transition-all duration-500">
+        <div class="bg-white rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl border-4 border-jujube-500 animate-fade-in relative">
+            
+            <!-- 紅棗與警告視覺設計 -->
+            <div class="bg-gradient-to-br from-jujube-500 to-jujube-700 p-6 text-center text-white relative">
+                <div class="absolute -top-10 -right-10 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
+                <div class="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3 animate-bounce">
+                    <i class="fa-solid fa-triangle-exclamation text-3xl"></i>
+                </div>
+                <h2 class="text-2xl font-black tracking-wider">採果體驗緊急公告</h2>
+                <p class="text-white/80 text-sm mt-1">苗栗公館農民合作聯絡網</p>
+            </div>
+            
+            <!-- 警告核心內容 -->
+            <div class="p-6 md:p-8 space-y-6">
+                <div class="bg-jujube-50 border-l-4 border-jujube-500 p-4 rounded-r-xl">
+                    <p class="text-jujube-700 font-bold text-lg leading-relaxed">
+                        「受巴威颱風影響，紅棗有許多裂果，採果會部分裂果，體驗感會下降，請自行斟酌。」
+                    </p>
+                </div>
+                
+                <p class="text-stone-600 text-sm leading-relaxed">
+                    為了確保您的旅遊品質，本數位平台提供雙向導流系統，您可以依照需求選擇您想前往的頁面：
+                </p>
+
+                <!-- 雙向分流按鈕 -->
+                <div class="flex flex-col gap-3">
+                    <button onclick="closeOverlay('orchard')" class="w-full bg-jujube-500 hover:bg-jujube-600 active:scale-[0.98] transition text-white py-4 px-6 rounded-2xl font-bold flex items-center justify-between shadow-lg shadow-jujube-500/20">
+                        <span class="flex items-center gap-2">
+                            <i class="fa-solid fa-basket-shopping text-xl"></i> 我依然要採果 (前往棗園)
+                        </span>
+                        <i class="fa-solid fa-chevron-right"></i>
+                    </button>
+                    
+                    <button onclick="closeOverlay('attractions')" class="w-full bg-olive-600 hover:bg-olive-700 active:scale-[0.98] transition text-white py-4 px-6 rounded-2xl font-bold flex items-center justify-between shadow-lg shadow-olive-600/20">
+                        <span class="flex items-center gap-2">
+                            <i class="fa-solid fa-map-location-dot text-xl"></i> 我想看看其他景點與美食
+                        </span>
+                        <i class="fa-solid fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="bg-stone-50 p-4 border-t border-stone-100 text-center text-xs text-stone-400">
+                苗栗公館鄉棗農名單、景點、美食即時資訊導覽平台 2026
+            </div>
+        </div>
+    </div>
+
+    <!-- 導航列與Header -->
+    <header class="bg-white border-b border-warm-200 sticky top-0 z-40 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <!-- 標誌區 -->
+            <div class="flex items-center gap-3">
+                <div>
+                    <h1 class="text-xl font-black text-olive-700 tracking-wider">公館鄉數位導覽</h1>
+                    <p class="text-xs text-stone-400">行程推薦與商家名單</p>
+                </div>
+            </div>
+            
+            <!-- 頁籤選單 (切換第二層 A / B) -->
+            <div class="flex bg-stone-100 p-1 rounded-2xl w-full sm:w-auto">
+                <button onclick="switchTab('orchard')" id="tab-orchard" class="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm transition-all duration-300 bg-white text-jujube-500 shadow-sm">
+                    <i class="fa-solid fa-basket-shopping"></i> 紅棗園採果名單
+                </button>
+                <button onclick="switchTab('attractions')" id="tab-attractions" class="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm transition-all duration-300 text-stone-600 hover:text-stone-900">
+                    <i class="fa-solid fa-map-pin"></i> 美食與其他景點
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主內容區 -->
+    <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+
+        <!-- 旅遊溫馨提醒 (雙欄警告橫幅) -->
+        <section class="mb-8 bg-gradient-to-r from-warm-100 to-warm-50 border border-warm-200 rounded-3xl p-6 md:p-8 shadow-sm relative overflow-hidden">
+            <div class="absolute -right-6 -bottom-6 text-stone-200/50 text-9xl pointer-events-none">
+                <i class="fa-solid fa-lightbulb"></i>
+            </div>
+            
+            <div class="flex flex-col lg:flex-row gap-6 items-center">
+                <div class="flex items-center gap-4 lg:w-1/3">
+                    <div class="w-14 h-14 bg-jujube-100 text-jujube-500 rounded-2xl flex items-center justify-center flex-shrink-0 text-2xl">
+                        <i class="fa-solid fa-umbrella-beach"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-black text-stone-800">公館棗園重要規範</h3>
+                        <p class="text-xs text-stone-500">保護紅棗果樹，維護優質採果體驗</p>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 lg:w-2/3 w-full">
+                    <div class="bg-white p-4 rounded-xl shadow-sm flex items-start gap-3 border border-stone-100">
+                        <i class="fa-solid fa-ban text-jujube-500 mt-1"></i>
+                        <div>
+                            <span class="font-bold text-stone-700 block text-sm">棗園請勿撐傘</span>
+                            <span class="text-xs text-stone-500 leading-normal">避免傘尖劃破、勾壞結實累累的紅棗與枝葉。</span>
+                        </div>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl shadow-sm flex items-start gap-3 border border-stone-100">
+                        <i class="fa-solid fa-utensils text-jujube-500 mt-1"></i>
+                        <div>
+                            <span class="font-bold text-stone-700 block text-sm">請勿邊採邊吃</span>
+                            <span class="text-xs text-stone-500 leading-normal">為維持果園環境衛生並尊重農民，請採後秤重再享用。</span>
+                        </div>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl shadow-sm flex items-start gap-3 border border-stone-100">
+                        <i class="fa-solid fa-circle-exclamation text-jujube-500 mt-1"></i>
+                        <div>
+                            <span class="font-bold text-stone-700 block text-sm">防曬防中暑呦</span>
+                            <span class="text-xs text-stone-500 leading-normal">天氣炎熱，請準備遮陽帽、防曬衣並多喝水防中暑。</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 我的最愛收藏區 (浮動、可收合) -->
+        <div id="favorites-section" class="hidden mb-8 bg-jujube-50/50 border border-jujube-100 rounded-3xl p-6 relative">
+            <h3 class="text-lg font-black text-jujube-700 flex items-center gap-2 mb-4">
+                <i class="fa-solid fa-heart text-jujube-500 animate-pulse"></i> 我的珍藏地圖
+            </h3>
+            <div id="favorites-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <!-- 收藏卡片會動態塞入這裡 -->
+            </div>
+        </div>
+
+        <!-- ==================== 第二層 A: 紅棗園採果網站面版 ==================== -->
+        <section id="orchard-panel" class="space-y-6">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h2 class="text-2xl font-black text-olive-700">紅棗園採果地圖</h2>
+                    <p class="text-sm text-stone-500">公館優質棗農名單，提供直撥、FB與地圖導航</p>
+                </div>
+                <!-- 搜尋與篩選列 -->
+                <div class="relative w-full md:w-80">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-stone-400">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                    </span>
+                    <input type="text" id="orchard-search" oninput="searchOrchards()" placeholder="搜尋棗園名稱或地址..." class="w-full bg-white border border-stone-200 rounded-2xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-jujube-500 focus:border-transparent transition shadow-sm">
+                </div>
+            </div>
+
+            <!-- 棗園卡片列表 -->
+            <div id="orchards-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- 由 JavaScript 自動填充 -->
+            </div>
+        </section>
+
+        <!-- ==================== 第二層 B: 其他景點與美食網站面版 ==================== -->
+        <section id="attractions-panel" class="hidden space-y-6">
+            <div class="flex flex-col lg:flex-row justify-between lg:items-center gap-6">
+                <div>
+                    <h2 class="text-2xl font-black text-olive-700">在地美食與觀光景點</h2>
+                    <p class="text-sm text-stone-500">精選公館在地餐廳小吃與熱門打卡景點</p>
+                </div>
+                
+                <div class="flex flex-col md:flex-row gap-4 items-stretch w-full lg:w-auto">
+                    <!-- 篩選器 Checkboxes -->
+                    <div class="flex bg-warm-100 border border-warm-200 p-1.5 rounded-2xl gap-2 justify-center">
+                        <label class="flex items-center gap-2 px-4 py-1.5 rounded-xl cursor-pointer font-bold text-sm select-none transition" id="lbl-check-spots">
+                            <input type="checkbox" id="check-spots" checked onchange="filterAttractions()" class="hidden">
+                            <span class="w-4 h-4 rounded-full border border-stone-400 flex items-center justify-center text-xs text-white" id="box-spots"><i class="fa-solid fa-check"></i></span>
+                            🗺️ 人氣景點
+                        </label>
+                        <label class="flex items-center gap-2 px-4 py-1.5 rounded-xl cursor-pointer font-bold text-sm select-none transition" id="lbl-check-food">
+                            <input type="checkbox" id="check-food" checked onchange="filterAttractions()" class="hidden">
+                            <span class="w-4 h-4 rounded-full border border-stone-400 flex items-center justify-center text-xs text-white" id="box-food"><i class="fa-solid fa-check"></i></span>
+                            🍔 在地美食
+                        </label>
+                    </div>
+                    
+                    <!-- 搜尋列 -->
+                    <div class="relative flex-grow lg:w-72">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-stone-400">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                        </span>
+                        <input type="text" id="attractions-search" oninput="filterAttractions()" placeholder="搜尋景點/美食名稱..." class="w-full bg-white border border-stone-200 rounded-2xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-olive-600 focus:border-transparent transition shadow-sm">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 景點/美食卡片列表 -->
+            <div id="attractions-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- 由 JavaScript 自動填充 -->
+            </div>
+        </section>
+
+    </main>
+
+    <!-- 底部資訊 -->
+    <footer class="bg-olive-700 text-warm-50 py-10 mt-16 border-t-4 border-jujube-500">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-6">
+            <div class="flex justify-center gap-6 text-xl">
+                <a href="#" class="hover:text-jujube-100 transition"><i class="fa-brands fa-facebook"></i></a>
+                <a href="#" class="hover:text-jujube-100 transition"><i class="fa-brands fa-line"></i></a>
+                <a href="#" class="hover:text-jujube-100 transition"><i class="fa-solid fa-map-location"></i></a>
+            </div>
+            
+            <div class="text-sm text-stone-200 space-y-2">
+                <p class="font-bold text-lg text-white">苗栗公館鄉棗農名單及景點導覽系統</p>
+                <p>資料來源：中華民國公館鄉農會合作彙整 ‧ 颱風損害即時路網資料庫</p>
+                <p class="text-xs text-stone-400">本網頁已為手持裝置 (iOS / Android) 一鍵撥話、地圖導航及複製地址等智慧通訊技術進行全方位整合與優化。</p>
+            </div>
+            
+            <div class="pt-6 border-t border-white/10 text-xs text-stone-400">
+                &copy; 2026 苗栗公館紅棗遊客導覽平台 版權所有.
+            </div>
+        </div>
+    </footer>
+
+    <!-- 通知通知元件 (動態提示) -->
+    <div id="toast" class="fixed bottom-6 right-6 z-50 bg-stone-900 text-white px-6 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none">
+        <i class="fa-solid fa-circle-check text-green-400 text-lg"></i>
+        <span id="toast-message" class="text-sm font-bold">複製成功！</span>
+    </div>
+
+    <!-- 數據與交互 JavaScript 核心 -->
+    <script>
+        // ======= 資料庫數據定義 =======
+        const orchardsData = [
+            { id: 'o1', name: '棗三枚紅棗園', phone: '0932-659198', tel: '0932659198', address: '苗栗縣公館鄉館東村十鄰145之5號', mapUrl: 'https://maps.app.goo.gl/1wUKujHBAo2C5gBy5', info: '', fbUrl: 'https://www.facebook.com/profile.php?id=61554408872632', alerts: [] },
+            { id: 'o2', name: '渤海紅棗園', phone: '0935-761370', tel: '0935761370', address: '苗栗縣公館鄉石墻村4鄰110-6號', mapUrl: 'https://maps.app.goo.gl/C8CkXbEvhL8as6Wo6', info: '', fbUrl: 'https://www.facebook.com/profile.php?id=100054410550358', alerts: [] },
+            { id: 'o3', name: '吉秀紅棗園', phone: '0910-233625', tel: '0910233625', address: '苗栗縣公館鄉石墻村3鄰364-9號', mapUrl: 'https://maps.app.goo.gl/jVAPVXJHTgKDwdMy8', info: '入場180，可以折抵帶一斤紅棗', fbUrl: 'https://www.facebook.com/profile.php?id=100070174121332', alerts: [] },
+            { id: 'o4', name: '逢彬紅棗園', phone: '0986-623868', tel: '0986623868', address: '苗栗縣公館鄉石圍牆村13鄰270號', mapUrl: 'https://maps.app.goo.gl/py2hyciPy5gJdt2r7', info: '', fbUrl: '', alerts: [] },
+            { id: 'o5', name: '迪大紅棗園', phone: '0937-221917', tel: '0937221917', address: '苗栗縣公館鄉石圍牆村4鄰110之1號', mapUrl: 'https://maps.app.goo.gl/GgdzCZeY6g85Zyn97', info: '', fbUrl: '', alerts: [] },
+            { id: 'o6', name: '玉順紅棗園', phone: '0912-861-160', tel: '0912861160', address: '苗栗縣公館鄉石墻村6鄰131-5號 363號', mapUrl: 'https://maps.app.goo.gl/fcQq3hjqkbVqtQwe7', info: '', fbUrl: 'https://www.facebook.com/profile.php?id=100064584013982', alerts: [] },
+            { id: 'o7', name: '徐家紅棗果園', phone: '0936-589-546', tel: '0936589546', address: '苗栗縣公館鄉石墻大道234-1號', mapUrl: 'https://maps.app.goo.gl/56gHgJ9S6C9Yv8Xf7', info: '230入場，可抵免商品', fbUrl: 'https://www.facebook.com/likoohsu', tags: ['友善石虎', '有機/友善耕作', '草生栽培'], alerts: ['⚠️ 7/18-7/19 無採果體驗'] },
+            { id: 'o8', name: '錦城紅棗園', phone: '037-228560', tel: '037228560', address: '苗栗縣公館鄉中義村270之1號', mapUrl: 'https://maps.app.goo.gl/5a5u4JbLFqviREg78', info: '', fbUrl: 'https://www.facebook.com/p/%E9%8C%A6%E5%9F%8E%E7%B4%85%E6%A3%97%E5%9C%92-100065280858321/', alerts: [] },
+            { id: 'o9', name: '迴哥紅棗園', phone: '0933-171869', tel: '0933171869', address: '苗栗縣公館鄉石墻村1鄰29-2號', mapUrl: 'https://maps.app.goo.gl/cPuQizeP6PhqYfUN9', info: 'Line: mel5888', fbUrl: 'https://www.facebook.com/FagarJujubeGarden', alerts: [] },
+            { id: 'o10', name: '棗美金', phone: '0933-515916', tel: '0933515916', address: '苗栗縣公館鄉石圍牆村13鄰', mapUrl: 'https://maps.app.goo.gl/jWyJPxm8dgXu85a69', info: '', fbUrl: 'https://www.facebook.com/jiannming.liu', alerts: [] },
+            { id: 'o11', name: '來來紅棗園', phone: '0910-851-153', tel: '0910851153', address: '苗栗縣公館鄉', mapUrl: 'https://maps.app.goo.gl/eqD5KmZevnoiAj5K9', info: '', fbUrl: '', alerts: [] },
+            { id: 'o12', name: '棗到幸福', phone: '0927-663-296', tel: '0927663296', address: '苗栗縣公館鄉仁安村198-1號', mapUrl: 'https://maps.app.goo.gl/Tr3p4Q1GxeYhM7539', info: 'Line: @ytq8267g', fbUrl: 'https://www.facebook.com/HappinessDates/?_rdr', tags: ['藥檢合格'], alerts: [] }
+        ];
+
+        const attractionsData = [
+            // 景點
+            { id: 'a1', type: 'spot', name: '蜜鄉養蜂園', phone: '0937-782555', tel: '0937782555', address: '苗栗縣公館鄉福基村132-8號', mapUrl: 'https://maps.google.com/?q=蜜鄉養蜂園', time: '星期日 09:10–17:50', note: '🐝 農遊體驗', extraUrl: 'https://line.me/R/ti/p/@smb9097o', extraType: 'Line' },
+            { id: 'a2', type: 'spot', name: '陶瓷博物館', phone: '037-233121', tel: '037233121', address: '苗栗縣公館鄉館南村14鄰館南352號', mapUrl: 'https://maps.app.goo.gl/7oFvNyBtEHuLAeid8', time: '星期一公休 / 09:00–17:00', note: '🏺 藝術文化之旅', extraUrl: '', extraType: '' },
+            { id: 'a3', type: 'spot', name: '五穀文化村', phone: '037-234805', tel: '037234805', address: '苗栗縣公館鄉玉谷村117-6號', mapUrl: 'https://maps.app.goo.gl/WNV3EmicgupcTbFT8', time: '不定期休假', note: '🧱 陶藝手工坊', extraUrl: 'http://www.wuguu.com.tw/', extraType: '官網' },
+            { id: 'a4', type: 'spot', name: '穿龍驛站', phone: '037-233121', tel: '037233121', address: '苗栗縣公館鄉館南村館南352號', mapUrl: 'https://maps.app.goo.gl/7oFvNyBtEHuLAeid8', time: '星期一公休 / 09:00–17:00', note: '📸 打卡拍照熱點', extraUrl: '', extraType: '' },
+            { id: 'a5', type: 'spot', name: '喜妹娜哇稻草民俗藝品', phone: '037-228195', tel: '037228195', address: '苗栗縣公館鄉福星村福星75-1號', mapUrl: 'https://maps.app.goo.gl/419zos9XPkt6bvGg6', time: '星期日公休 / 08:00–17:00', note: '🎋 祝繩結工藝', extraUrl: 'http://www.shemaynawa.com.tw/', extraType: '官網' },
+            { id: 'a6', type: 'spot', name: '台灣油礦陳列館', phone: '037-221300', tel: '037221300', address: '苗栗縣公館鄉開礦村36號', mapUrl: 'https://www.cpc.com.tw/cp.aspx?n=3860', time: '星期一公休 / 09:00–16:00', note: '🛢️ 台灣第一口油井', extraUrl: 'https://www.cpc.com.tw/cp.aspx?n=3860', extraType: '官網' },
+            { id: 'a7', type: 'spot', name: '公館夜市', phone: '', tel: '', address: '苗栗縣公館鄉館南村', mapUrl: 'https://maps.app.goo.gl/nLZPG96aCTktysEu5', time: '僅限星期六 17:30-22:00', note: '🌃 週六限定在地夜市', extraUrl: '', extraType: '' },
+            // 美食
+            { id: 'f1', type: 'food', name: '巧軒餐館', phone: '037-226868', tel: '037226868', address: '苗栗縣公館鄉石墻大道223-1號', mapUrl: 'https://maps.google.com/?q=公館巧軒餐館', time: '星期一公休 / 11:30–13:30、17:00–19:30', note: '🥢 客家風味特色餐館', extraUrl: '', extraType: '' },
+            { id: 'f2', type: 'food', name: '福樂麵店', phone: '037-224455', tel: '037224455', address: '苗栗縣公館鄉福基村121號', mapUrl: 'https://maps.google.com/?q=公館福樂麵店', time: '每日 10:00–14:00、17:00–20:00', note: '🍜 在地超人氣客家麵食', extraUrl: '', extraType: '' },
+            { id: 'f3', type: 'food', name: '紅棗食府', phone: '037-224688', tel: '037224688', address: '苗栗縣公館鄉福基村福基村三鄰45號', mapUrl: 'https://maps.google.com/?q=公館紅棗食府', time: '星期一公休 / 11:00–14:00、17:00–20:00', note: '🥘 紅棗主題創意料理', extraUrl: '', extraType: '' },
+            { id: 'f4', type: 'food', name: '夢鼎軒精緻小吃', phone: '037-222428', tel: '037222428', address: '苗栗縣公館鄉館東村華東街9號', mapUrl: 'https://maps.google.com/?q=公館夢鼎軒精緻小吃', time: '星期一公休 / 11:00–14:00、17:00–20:00', note: '🍱 精緻家常小菜', extraUrl: '', extraType: '' },
+            { id: 'f5', type: 'food', name: '昱程臭豆腐', phone: '0910-518313', tel: '0910518313', address: '苗栗縣公館鄉館中村榮光街4號', mapUrl: 'https://maps.google.com/?q=公館昱程臭豆腐', time: '星期日公休 / 14:30–22:00', note: '🍢 金黃香酥在地炸物', extraUrl: '', extraType: '' },
+            { id: 'f6', type: 'food', name: '上上小吃', phone: '037-225586', tel: '037225586', address: '苗栗縣公館鄉館中村近光路37號', mapUrl: 'https://maps.google.com/?q=公館上上小吃', time: '星期四公休 / 11:00–13:30、17:00–19:30', note: '🍳 在地家常傳統點心', extraUrl: '', extraType: '' },
+            { id: 'f7', type: 'food', name: '老車茶飲', phone: '037-228828', tel: '037228828', address: '苗栗縣公館鄉玉泉村玉泉111-15號', mapUrl: 'https://maps.google.com/?q=公館老車茶飲', time: '每日 11:00–18:00', note: '🍹 網紅推薦懷舊手搖特調', extraUrl: '', extraType: '' },
+            { id: 'f8', type: 'food', name: '棗莊古藝庭園膳坊', phone: '037-239088', tel: '037239088', address: '苗栗縣公館鄉福星村43之6號', mapUrl: 'https://maps.google.com/?q=公館棗莊古藝庭園膳坊', time: '每日 11:00–14:00、17:00–20:00', note: '🏡 庭園景觀客家紅棗餐', extraUrl: '', extraType: '' },
+            { id: 'f9', type: 'food', name: '噹噹專業茶飲', phone: '', tel: '', address: '苗栗縣公館鄉館中村榮光街10-2號', mapUrl: 'https://maps.google.com/?q=公館噹噹專業茶飲', time: '依現場公佈為主', note: '🥤 銅板價手搖在地解渴', extraUrl: '', extraType: '' },
+            { id: 'f10', type: 'food', name: '街上的老房子 COFFEE', phone: '', tel: '', address: '苗栗縣公館鄉館中村信義街26號', mapUrl: 'https://maps.google.com/?q=街上的老房子COFFEE', time: '咖啡香氣瀰漫的小角落', note: '☕ 老宅下午茶與手沖單品', extraUrl: '', extraType: '' },
+            { id: 'f11', type: 'food', name: '穿龍老屋豆腐坊', phone: '', tel: '', address: '苗栗縣公館鄉福基村福基120號', mapUrl: 'https://maps.google.com/?q=穿龍老屋豆腐坊', time: '純手工非基改慢火細做', note: '🥢 水圳老屋鹽滷手工豆腐', extraUrl: '', extraType: '' }
+        ];
+
+        // 收藏清單
+        let favorites = JSON.parse(localStorage.getItem('jujube_favs')) || [];
+
+        // ======= 初始化處理 =======
+        window.addEventListener('DOMContentLoaded', () => {
+            renderOrchards(orchardsData);
+            renderAttractions(attractionsData);
+            updateCheckboxStyles();
+            renderFavorites();
+        });
+
+        // 第一層彈窗的關閉機制
+        function closeOverlay(choice) {
+            const modal = document.getElementById('typhoon-modal');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            setTimeout(() => {
+                modal.style.display = 'none';
+            }, 500);
+
+            // 依據導流按鈕導流
+            if (choice === 'orchard') {
+                switchTab('orchard');
+            } else if (choice === 'attractions') {
+                switchTab('attractions');
+            }
+        }
+
+        // 第二層 A & B 頁籤切換
+        function switchTab(tabName) {
+            const orchardTab = document.getElementById('tab-orchard');
+            const attrTab = document.getElementById('tab-attractions');
+            const orchardPanel = document.getElementById('orchard-panel');
+            const attrPanel = document.getElementById('attractions-panel');
+
+            if (tabName === 'orchard') {
+                orchardTab.className = "flex-grow sm:flex-initial flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm transition-all duration-300 bg-white text-jujube-500 shadow-sm";
+                attrTab.className = "flex-grow sm:flex-initial flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm transition-all duration-300 text-stone-600 hover:text-stone-900";
+                orchardPanel.classList.remove('hidden');
+                attrPanel.classList.add('hidden');
+            } else {
+                attrTab.className = "flex-grow sm:flex-initial flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm transition-all duration-300 bg-white text-olive-600 shadow-sm";
+                orchardTab.className = "flex-grow sm:flex-initial flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm transition-all duration-300 text-stone-600 hover:text-stone-900";
+                orchardPanel.classList.add('hidden');
+                attrPanel.classList.remove('hidden');
+            }
+        }
+
+        // ======= 紅棗園渲染模組 =======
+        function renderOrchards(data) {
+            const grid = document.getElementById('orchards-grid');
+            grid.innerHTML = '';
+            
+            if (data.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-full text-center py-12 text-stone-400">
+                        <i class="fa-solid fa-face-frown text-4xl mb-3"></i>
+                        <p class="font-bold">找不到相符的紅棗果園，請重新搜尋。</p>
+                    </div>
+                `;
+                return;
+            }
+
+            data.forEach(item => {
+                const isFav = favorites.includes(item.id);
+                let tagBadges = '';
+                if (item.tags) {
+                    item.tags.forEach(t => {
+                        tagBadges += `<span class="bg-olive-50 text-olive-600 text-xs px-2 py-1 rounded-md font-bold border border-olive-100">${t}</span>`;
+                    });
+                }
+                
+                let alertBadge = '';
+                if (item.alerts && item.alerts.length > 0) {
+                    item.alerts.forEach(a => {
+                        alertBadge += `
+                            <div class="bg-jujube-50 text-jujube-600 text-xs px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 border border-jujube-100 mt-2">
+                                <i class="fa-solid fa-triangle-exclamation animate-pulse"></i> ${a}
+                            </div>
+                        `;
+                    });
+                }
+
+                const card = document.createElement('div');
+                card.className = "bg-white rounded-3xl p-6 border border-stone-100 shadow-sm hover:shadow-lg transition-all duration-300 relative flex flex-col justify-between";
+                card.innerHTML = `
+                    <div>
+                        <div class="flex justify-between items-start mb-3">
+                            <h3 class="text-lg font-black text-stone-800">${item.name}</h3>
+                            <button onclick="toggleFavorite('${item.id}', 'orchard')" class="text-xl ${isFav ? 'text-jujube-500' : 'text-stone-300'} hover:scale-115 active:scale-95 transition">
+                                <i class="${isFav ? 'fa-solid' : 'fa-regular'} fa-heart"></i>
+                            </button>
+                        </div>
+                        
+                        <div class="flex flex-wrap gap-1.5 mb-4">
+                            <span class="bg-jujube-50 text-jujube-500 text-xs px-2.5 py-1 rounded-md font-black">棗農採果</span>
+                            ${tagBadges}
+                        </div>
+
+                        <div class="space-y-2.5 text-stone-600 text-sm mb-6">
+                            <p class="flex items-start gap-2.5">
+                                <i class="fa-solid fa-location-dot text-stone-400 mt-1 flex-shrink-0"></i>
+                                <span class="leading-relaxed hover:text-olive-600 cursor-pointer" onclick="window.open('${item.mapUrl}', '_blank')">${item.address || '公館鄉在地產銷班區'}</span>
+                            </p>
+                            ${item.phone ? `
+                            <p class="flex items-center gap-2.5">
+                                <i class="fa-solid fa-phone text-stone-400 flex-shrink-0"></i>
+                                <a href="tel:${item.tel}" class="font-bold text-stone-700 hover:text-jujube-500 hover:underline transition">
+                                    ${item.phone}
+                                </a>
+                            </p>` : ''}
+                            ${item.info ? `
+                            <p class="flex items-start gap-2.5 bg-warm-50 p-2.5 rounded-xl border border-warm-100">
+                                <i class="fa-solid fa-info text-olive-600 mt-0.5"></i>
+                                <span class="text-xs font-bold text-stone-600">${item.info}</span>
+                            </p>` : ''}
+                            ${alertBadge}
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2.5 pt-4 border-t border-stone-100">
+                        <a href="${item.mapUrl}" target="_blank" class="bg-olive-50 hover:bg-olive-100 text-olive-600 py-2.5 px-3 rounded-2xl text-xs font-bold flex items-center justify-center gap-1.5 transition">
+                            <i class="fa-solid fa-map-location-dot text-sm"></i> 地圖導航
+                        </a>
+                        ${item.fbUrl ? `
+                        <a href="${item.fbUrl}" target="_blank" class="bg-blue-50 hover:bg-blue-100 text-blue-600 py-2.5 px-3 rounded-2xl text-xs font-bold flex items-center justify-center gap-1.5 transition">
+                            <i class="fa-brands fa-facebook text-sm"></i> 棗園 FB
+                        </a>` : `
+                        <button class="bg-stone-50 text-stone-300 py-2.5 px-3 rounded-2xl text-xs font-bold cursor-not-allowed flex items-center justify-center gap-1.5" disabled>
+                            <i class="fa-solid fa-link-slash"></i> 無社群
+                        </button>
+                        `}
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function searchOrchards() {
+            const query = document.getElementById('orchard-search').value.toLowerCase().trim();
+            const filtered = orchardsData.filter(item => 
+                item.name.toLowerCase().includes(query) || 
+                item.address.toLowerCase().includes(query)
+            );
+            renderOrchards(filtered);
+        }
+
+        // ======= 其他景點與美食渲染模組 =======
+        function renderAttractions(data) {
+            const grid = document.getElementById('attractions-grid');
+            grid.innerHTML = '';
+
+            if (data.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-full text-center py-12 text-stone-400">
+                        <i class="fa-solid fa-magnifying-glass-chart text-4xl mb-3"></i>
+                        <p class="font-bold">無相符的景點或美食店家，請調整上方勾選框。</p>
+                    </div>
+                `;
+                return;
+            }
+
+            data.forEach(item => {
+                const isFav = favorites.includes(item.id);
+                const isSpot = item.type === 'spot';
+                
+                const card = document.createElement('div');
+                card.className = "bg-white rounded-3xl p-6 border border-stone-100 shadow-sm hover:shadow-lg transition-all duration-300 relative flex flex-col justify-between";
+                card.innerHTML = `
+                    <div>
+                        <div class="flex justify-between items-start mb-3">
+                            <h3 class="text-lg font-black text-stone-800">${item.name}</h3>
+                            <button onclick="toggleFavorite('${item.id}', 'attraction')" class="text-xl ${isFav ? 'text-jujube-500' : 'text-stone-300'} hover:scale-115 active:scale-95 transition">
+                                <i class="${isFav ? 'fa-solid' : 'fa-regular'} fa-heart"></i>
+                            </button>
+                        </div>
+                        
+                        <div class="flex flex-wrap gap-1.5 mb-4">
+                            <span class="${isSpot ? 'bg-olive-50 text-olive-600' : 'bg-orange-50 text-orange-600'} text-xs px-2.5 py-1 rounded-md font-black">
+                                ${isSpot ? '📍 景點' : '🍔 在地美食'}
+                            </span>
+                            ${item.note ? `<span class="bg-stone-50 text-stone-500 text-xs px-2.5 py-1 rounded-md font-bold">${item.note}</span>` : ''}
+                        </div>
+
+                        <div class="space-y-2.5 text-stone-600 text-sm mb-6">
+                            <p class="flex items-start gap-2.5">
+                                <i class="fa-solid fa-location-dot text-stone-400 mt-1 flex-shrink-0"></i>
+                                <span class="leading-relaxed hover:text-olive-600 cursor-pointer" onclick="window.open('${item.mapUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.name + ' ' + item.address)}`}', '_blank')">${item.address}</span>
+                            </p>
+                            ${item.phone ? `
+                            <p class="flex items-center gap-2.5">
+                                <i class="fa-solid fa-phone text-stone-400 flex-shrink-0"></i>
+                                <a href="tel:${item.tel}" class="font-bold text-stone-700 hover:text-olive-600 hover:underline transition">
+                                    ${item.phone}
+                                </a>
+                            </p>` : ''}
+                            ${item.time ? `
+                            <p class="flex items-start gap-2.5">
+                                <i class="fa-regular fa-clock text-stone-400 mt-0.5 flex-shrink-0"></i>
+                                <span class="text-xs text-stone-500">${item.time}</span>
+                            </p>` : ''}
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2.5 pt-4 border-t border-stone-100">
+                        <a href="${item.mapUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.name + ' ' + item.address)}`}" target="_blank" class="bg-olive-50 hover:bg-olive-100 text-olive-600 py-2.5 px-3 rounded-2xl text-xs font-bold flex items-center justify-center gap-1.5 transition">
+                            <i class="fa-solid fa-map-location-dot text-sm"></i> 地圖導航
+                        </a>
+                        ${item.extraUrl ? `
+                        <a href="${item.extraUrl}" target="_blank" class="bg-green-50 hover:bg-green-100 text-green-600 py-2.5 px-3 rounded-2xl text-xs font-bold flex items-center justify-center gap-1.5 transition">
+                            <i class="fa-solid fa-arrow-up-right-from-square"></i> 景點${item.extraType || '連結'}
+                        </a>` : `
+                        <button class="bg-stone-50 text-stone-300 py-2.5 px-3 rounded-2xl text-xs font-bold cursor-not-allowed flex items-center justify-center gap-1.5" disabled>
+                            <i class="fa-solid fa-link-slash"></i> 無官網
+                        </button>
+                        `}
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function filterAttractions() {
+            const showSpots = document.getElementById('check-spots').checked;
+            const showFood = document.getElementById('check-food').checked;
+            const query = document.getElementById('attractions-search').value.toLowerCase().trim();
+
+            updateCheckboxStyles();
+
+            let filtered = attractionsData;
+
+            if (!showSpots && !showFood) {
+                renderAttractions([]);
+                return;
+            } else if (showSpots && !showFood) {
+                filtered = filtered.filter(item => item.type === 'spot');
+            } else if (!showSpots && showFood) {
+                filtered = filtered.filter(item => item.type === 'food');
+            }
+
+            if (query !== '') {
+                filtered = filtered.filter(item => 
+                    item.name.toLowerCase().includes(query) || 
+                    item.address.toLowerCase().includes(query) ||
+                    (item.note && item.note.toLowerCase().includes(query))
+                );
+            }
+
+            renderAttractions(filtered);
+        }
+
+        function updateCheckboxStyles() {
+            const checkSpots = document.getElementById('check-spots');
+            const checkFood = document.getElementById('check-food');
+            
+            const lblSpots = document.getElementById('lbl-check-spots');
+            const lblFood = document.getElementById('lbl-check-food');
+            
+            const boxSpots = document.getElementById('box-spots');
+            const boxFood = document.getElementById('box-food');
+
+            if (checkSpots.checked) {
+                lblSpots.className = "flex items-center gap-2 px-4 py-1.5 rounded-xl cursor-pointer font-bold text-sm select-none transition bg-olive-600 text-white shadow-sm";
+                boxSpots.className = "w-4 h-4 rounded-full bg-white text-olive-600 flex items-center justify-center text-[10px]";
+            } else {
+                lblSpots.className = "flex items-center gap-2 px-4 py-1.5 rounded-xl cursor-pointer font-bold text-sm select-none transition text-stone-600 hover:bg-stone-200/50";
+                boxSpots.className = "w-4 h-4 rounded-full border border-stone-400 bg-transparent flex items-center justify-center text-[10px] text-transparent";
+            }
+
+            if (checkFood.checked) {
+                lblFood.className = "flex items-center gap-2 px-4 py-1.5 rounded-xl cursor-pointer font-bold text-sm select-none transition bg-orange-500 text-white shadow-sm";
+                boxFood.className = "w-4 h-4 rounded-full bg-white text-orange-500 flex items-center justify-center text-[10px]";
+            } else {
+                lblFood.className = "flex items-center gap-2 px-4 py-1.5 rounded-xl cursor-pointer font-bold text-sm select-none transition text-stone-600 hover:bg-stone-200/50";
+                boxFood.className = "w-4 h-4 rounded-full border border-stone-400 bg-transparent flex items-center justify-center text-[10px] text-transparent";
+            }
+        }
+
+        function toggleFavorite(id, type) {
+            if (favorites.includes(id)) {
+                favorites = favorites.filter(favId => favId !== id);
+                showToast('已從收藏清單中移除 💔');
+            } else {
+                favorites.push(id);
+                showToast('已成功加入我的珍藏地圖 ❤️');
+            }
+            localStorage.setItem('jujube_favs', JSON.stringify(favorites));
+            
+            searchOrchards();
+            filterAttractions();
+            renderFavorites();
+        }
+
+        function renderFavorites() {
+            const favSection = document.getElementById('favorites-section');
+            const favList = document.getElementById('favorites-list');
+            
+            if (favorites.length === 0) {
+                favSection.classList.add('hidden');
+                return;
+            }
+
+            favSection.classList.remove('hidden');
+            favList.innerHTML = '';
+
+            favorites.forEach(favId => {
+                const orchard = orchardsData.find(item => item.id === favId);
+                const attraction = attractionsData.find(item => item.id === favId);
+                
+                const item = orchard || attraction;
+                if (!item) return;
+
+                const isOrchard = !!orchard;
+                const badgeText = isOrchard ? '採果棗園' : (item.type === 'spot' ? '人氣景點' : '在地美食');
+                const badgeClass = isOrchard ? 'bg-jujube-50 text-jujube-600' : (item.type === 'spot' ? 'bg-olive-50 text-olive-600' : 'bg-orange-50 text-orange-600');
+
+                const card = document.createElement('div');
+                card.className = "bg-white p-4 rounded-2xl border border-jujube-100/50 shadow-sm flex flex-col justify-between";
+                card.innerHTML = `
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="${badgeClass} text-xs px-2 py-0.5 rounded-md font-bold">${badgeText}</span>
+                            <button onclick="toggleFavorite('${item.id}')" class="text-jujube-500 hover:scale-110 active:scale-95 transition">
+                                <i class="fa-solid fa-heart"></i>
+                            </button>
+                        </div>
+                        <h4 class="font-bold text-stone-800 text-sm mb-1">${item.name}</h4>
+                        <p class="text-xs text-stone-500 line-clamp-1 mb-2"><i class="fa-solid fa-location-dot"></i> ${item.address}</p>
+                    </div>
+                    <div class="flex gap-2 pt-2 border-t border-stone-50">
+                        <a href="${item.mapUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.name + ' ' + item.address)}`}" target="_blank" class="w-full bg-stone-50 hover:bg-stone-100 text-stone-600 text-center py-1.5 rounded-xl text-xs font-bold transition">
+                            地圖導航
+                        </a>
+                    </div>
+                `;
+                favList.appendChild(card);
+            });
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toast-message');
+            toastMsg.innerText = message;
+            
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 2500);
+        }
+    </script>
+</body>
+</html>
